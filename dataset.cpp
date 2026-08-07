@@ -91,9 +91,7 @@ static void enforce16BitCubeTypeSupport(Dataset & info) {
 }
 
 static bool parseElementClass(const QString & value, Dataset & info) {// missing value means uint8; false for unsupported values
-    if (value == "uint16") {
-        info.bytesPerVoxel = 2;
-    }
+    info.bytesPerVoxel = value == "uint16" ? 2 : 1;
     return value.isEmpty() || value == "uint8" || value == "uint16";
 }
 
@@ -596,9 +594,11 @@ Dataset::list_t Dataset::parseToml(const QUrl & configUrl, QString configData) {
         info.renderSettings.color = QColor{QString::fromStdString(toml::find_or(vit, "Color", "white"))};
         info.token = QString::fromStdString(toml::find_or(vit, "AdditionalQuery", std::string{}));
 
-        const auto elementClass = QString::fromStdString(toml::find_or(vit, "ElementClass", std::string{"uint8"}));
-        if (!parseElementClass(elementClass, info)) {
-            qWarning() << "Layer" << info.experimentname << "has unsupported ElementClass" << elementClass << "– assuming uint8";
+        if (vit.contains("ElementClass")) {
+            const auto elementClass = QString::fromStdString(toml::find(vit, "ElementClass").as_string());
+            if (!parseElementClass(elementClass, info)) {
+                qWarning() << "Layer" << info.experimentname << "has unsupported ElementClass" << elementClass << "– assuming uint8";
+            }
         }
 
         if (!(info.api == API::Precomputed || info.api == API::Sharded)) {
